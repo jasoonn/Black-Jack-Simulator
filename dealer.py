@@ -19,6 +19,8 @@ class Dealer:
                 return True
         return False
 
+    def getRemaining(self):
+        return self.deck.getRemainings()
 
     # Give card to player
     def givePlayerCard(self):

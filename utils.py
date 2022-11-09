@@ -5,7 +5,7 @@ from deck import Deck
 # return Type tuple (WinProb, loseProb, tieProb)
 def gameProb(points, dealerFirstCard, remainings):
     if points==-1:
-        return 0, 1, 0
+        return -1
     dealerDistribution = dealerDistributionWithFirst(dealerFirstCard, remainings)
     win = 0
     lose = 0
@@ -20,30 +20,42 @@ def gameProb(points, dealerFirstCard, remainings):
                 lose += value
             else:
                 win += value
-    return (win, lose, tie)
+    return win-lose
+    #return (win, lose, tie)
     
 
 
 # First calculate the probability to win the game if not
-# Second 
-def toDraw(points, hasAce, remainings):
+# Second iterate through all the possibilities
+def toDraw(points, hasAce, dealerFirstCard, remainings):
+    if points+10*hasAce<=21:
+        noDrawExpectedValue = gameProb(points+10*hasAce, dealerFirstCard, remainings)
+    else:
+        noDrawExpectedValue = gameProb(points, dealerFirstCard, remainings)
     size = float(sum([v for v in remainings.values()]))
-    answer = defaultdict(float)
+    drawExpectedValue = 0
     currentAce = hasAce
     for i in range(1, 11):
         if i==1:
             hasAce = 1
         occurProb = remainings[i]/size
+        remainings[i]-=1
         val = points + i
         if val>21:
-            answer[-1] += occurProb
+            drawExpectedValue -= occurProb
         else:
-            if val+10*hasAce<=21:
-                answer[val+10*hasAce] += occurProb
+            if hasAce==1 and val+10*hasAce<=21:
+                drawExpectedValue += occurProb*gameProb(val+10*hasAce, dealerFirstCard, remainings)
             else:
-                answer[val] += occurProb
+                drawExpectedValue += occurProb*gameProb(val, dealerFirstCard, remainings)
         if i==1:
             hasAce = currentAce
+        remainings[i]+=1
+    if drawExpectedValue >= noDrawExpectedValue:
+        return True
+    else:
+        return False
+
 
 # Get the dealer final points distribution given that the dealer's first card is "first". Excluding the probability of black jack
 def dealerDistributionWithFirst(first, remainings):
