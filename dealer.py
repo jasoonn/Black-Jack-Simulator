@@ -19,8 +19,13 @@ class Dealer:
                 return True
         return False
 
+    # Return the remaining cards to the users(need to add the second card because user do not know value of the dealer's second card)
     def getRemaining(self):
-        return self.deck.getRemainings()
+        remainings = self.deck.getRemainings().copy()
+        if len(self.cards)==1:
+            return remainings
+        remainings[self.cards[1]] += 1
+        return remainings
 
     # Give card to player
     def givePlayerCard(self):
@@ -110,6 +115,7 @@ if __name__=="__main__":
     # for i in range(1, 11):
     #     print(i)
     #     simulateWithFirstCards(i, 100000)
+    simulateWithFirstCards(1, 1)
     pass
 
 

@@ -24,6 +24,63 @@ def gameProb(points, dealerFirstCard, remainings):
     #return (win, lose, tie)
     
 
+def oneCardExpected(card, hasAce, dealerFirstCard, remainings):
+    size = float(sum([v for v in remainings.values()]))
+    currentAce = hasAce
+    expectedValue = 0
+    for i in range(1, 11):
+        if remainings[i]==0:
+            continue
+
+        occurProb = remainings[i]/size
+        if (i==1 and card==10) or (i==10 and card==1):
+            expectedValue += occurProb*1.5
+            continue
+
+        if i==1:
+            hasAce = 1
+        remainings[i]-=1
+        val = card + i
+        if val>21:
+            expectedValue -= occurProb
+        else:
+            if val+10*hasAce<=21:
+                expectedValue += occurProb*gameProb(val+10*hasAce, dealerFirstCard, remainings)
+            else:
+                expectedValue += occurProb*gameProb(val, dealerFirstCard, remainings)
+        if i==1:
+            hasAce = currentAce
+        remainings[i]+=1
+
+    return expectedValue
+
+# Find the expected value with at least two cards
+def expectedWin(points, hasAce, dealerFirstCard, remainings):
+    if toDraw(points, hasAce, dealerFirstCard, remainings)==False:
+        if points+10*hasAce<=21:
+            return gameProb(points+10*hasAce, dealerFirstCard, remainings)
+        else:
+            return gameProb(points, dealerFirstCard, remainings)
+    else:
+        size = float(sum([v for v in remainings.values()]))
+        currentAce = hasAce
+        expectedValue = 0
+        for i in range(1, 11):
+            if remainings[i]==0:
+                continue
+            if i==1:
+                hasAce = 1
+            occurProb = remainings[i]/size
+            remainings[i]-=1
+            val = points + i
+            if val>21:
+                expectedValue -= occurProb
+            else:
+                expectedValue += occurProb*expectedWin(val, hasAce, dealerFirstCard, remainings)
+            if i==1:
+                hasAce = currentAce
+            remainings[i]+=1
+        return expectedValue
 
 # First calculate the probability to win the game if not
 # Second iterate through all the possibilities
@@ -36,6 +93,8 @@ def toDraw(points, hasAce, dealerFirstCard, remainings):
     drawExpectedValue = 0
     currentAce = hasAce
     for i in range(1, 11):
+        if remainings[i]==0:
+            continue
         if i==1:
             hasAce = 1
         occurProb = remainings[i]/size
@@ -58,6 +117,7 @@ def toDraw(points, hasAce, dealerFirstCard, remainings):
 
 
 # Get the dealer final points distribution given that the dealer's first card is "first". Excluding the probability of black jack
+#  Verified
 def dealerDistributionWithFirst(first, remainings):
     # The dealer has 10 card, then the second card must not be Ace.
     baseSize = float(sum([count for count in remainings.values()]))
@@ -92,11 +152,14 @@ def dealerDistributionWithFirst(first, remainings):
 
     
 # Get the dealer distribution given that the dealer has "points" points
+# The function has been verified
 def getDealerPointsDistribution(points, hasAce, remainings, remainSize):
     answer = defaultdict(float)
     currentAce = hasAce
     # Handle the rest cards
     for i in range(1, 11):
+        if remainings[i]==0:
+            continue
         if i==1:
             hasAce = 1
         occurProb = remainings[i]/remainSize
