@@ -45,7 +45,6 @@ class Dealer:
 
     # Get specific card from deck to dealer's hands
     def recieveSpecificCard(self, card):
-        self.deck.drawSpecificCard(card)
         self.cards.append(card)
         if self.cards[-1]==1:
             self.hasAce = 1
@@ -68,28 +67,6 @@ class Dealer:
             else:
                 self.finalVal = self.value
         return self.finalVal
-
-def simulateWithFirstCards(first, size):
-    deck = Deck()
-    blackJackCount = 0
-    dealer = Dealer(deck)
-    occurs = defaultdict(int) 
-    counts = 0
-    while counts!=size:
-        # Get first two cards
-        dealer.reset()
-        deck.reInit()
-        dealer.recieveSpecificCard(first)
-        dealer.recieveCard()
-        if dealer.isBlackJack():
-            blackJackCount += 1
-            continue
-        else:
-            occurs[dealer.takeCards()] += 1
-            counts += 1
-    print([(key, float(value)/size) for key, value in occurs.items()])
-    print(size, blackJackCount)
-        
 
 def simulateDealer(size):
     deck = Deck()

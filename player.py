@@ -1,15 +1,26 @@
 
 from ctypes import pointer
-from utils import toDraw, gameProb, expectedWin
+from utils import toDraw, expectedWin, expectedDoubleDown, oneCardExpected
 
 
 class Player:
-    def __init__(self, id, dealer):
+    def __init__(self, id, dealer, splitStrategy, doubleStrategy, drawingStrategy):
         self.id = id
         self.cards = []
         self.dealer = dealer
         self.hasAce = 0
+        self.splitStrategy = splitStrategy
+        self.doubleStrategy = doubleStrategy
+        self.drawingStrategy = drawingStrategy
+        self.doubleDownExpected = None
         self.result = "Not initialize"
+        self.noDrawCount = 0
+        self.allDraw = 0
+        #self.depthCounts = [0, 0, 0, 0, 0]
+        self.depthCounts = []
+
+    def printDrawStats(self):
+        print(self.allDraw, self.depthCounts)
 
     def printCards(self):
         print("Player ", self.id , "cards:", self.cards, "result", self.result)
@@ -55,6 +66,16 @@ class Player:
         else:
             return "L"
 
+    def cardPlaying(self):
+        if self.drawingStrategy == "naive":
+            self.naivePlaying()
+        elif self.drawingStrategy == "online":
+            self.onlineStrategy()
+        elif self.drawingStrategy == "calculate":
+            self.calculateCardPlaying()
+        else:
+            raise Exception("No specified strategy in card playing")
+
     def naivePlaying(self, thresHold=17):
         points = sum(self.cards)
         while points<thresHold and (points+10*self.hasAce<thresHold or points+10*self.hasAce>21):
@@ -89,19 +110,41 @@ class Player:
                 self.result =  points
 
     def splittingPairs(self):
-        return False
-        if self.cards[0]==self.cards[1]:
-            dealerFirstCard = self.dealer.getFirst()
-            if self.cards[0]==1 or self.cards[0]==8:
+        if self.splitStrategy=="none":
+            return False
+        elif self.splitStrategy=="online":
+            if self.cards[0]==self.cards[1]:
+                dealerFirstCard = self.dealer.getFirst()
+                if self.cards[0]==1 or self.cards[0]==8:
+                    self.executeSplittingPairs()
+                    return True
+                if (self.cards[0]==2 or self.cards[0]==3 or self.cards[0]==7) and (dealerFirstCard<8 and dealerFirstCard!=1):
+                    self.executeSplittingPairs()
+                    return True
+                if self.cards[0]==6 and (2<=dealerFirstCard<=6):
+                    self.executeSplittingPairs()
+                    return True
+            return False
+        elif self.splitStrategy=="calculate":
+            if self.cards[0]==self.cards[1]:
+                remainings = self.dealer.getRemaining()
+                dealerFirstCard = self.dealer.getFirst()
+                splitExpected = oneCardExpected(self.cards[0], self.hasAce, dealerFirstCard, remainings)
+                origExpected = self.getExpectedValue()
+                print("Splitting: ", origExpected, splitExpected, self.doubleDownExpected, dealerFirstCard, self.cards)
+                if splitExpected*2 <= origExpected:
+                    return False
+                summ = sum(self.cards)
+                if 9<=summ<=11:
+                    self.doubleDownExpected = expectedDoubleDown(summ, self.hasAce, dealerFirstCard, remainings)
+                    if self.doubleDownExpected>splitExpected:
+                        return False
+                print("Splitting: ", origExpected, splitExpected, self.doubleDownExpected, dealerFirstCard, self.cards)
                 self.executeSplittingPairs()
                 return True
-            if (self.cards[0]==2 or self.cards[0]==3 or self.cards[0]==7) and (dealerFirstCard<8 and dealerFirstCard!=1):
-                self.executeSplittingPairs()
-                return True
-            if self.cards[0]==6 and (2<=dealerFirstCard<=6):
-                self.executeSplittingPairs()
-                return True
-        return False
+            return False
+        else:
+            raise Exception("No specified double splitting pair")  
 
     def executeSplittingPairs(self):
         #Get base card and get a card for the first round
@@ -109,51 +152,22 @@ class Player:
         self.cards.append(self.dealer.givePlayerCard())
         # Execute first pair
         if not self.isBlackJack():
-            #self.naivePlaying(11)
-            self.calculateCardPlaying()
-            #self.onlineStrategy()
+            self.cardPlaying()
         self.secondResult = self.result
         # Execute second pair
         self.cards = [baseCard]
         self.cards.append(self.dealer.givePlayerCard())
         if not self.isBlackJack():
-            #self.naivePlaying(11)
-            self.calculateCardPlaying()
-            #self.onlineStrategy()
-
-    def memoryDoubleDown(self):
-        summ = sum(self.cards)
-        dealerFirstCard = self.dealer.getFirst()
-        remainings = self.dealer.getRemaining()
-        # Expected win directly get
-        origExpected = expectedWin(summ, self.hasAce, dealerFirstCard, remainings)
-        print("Double down: ", origExpected, dealerFirstCard, self.cards)
-         
-        if 9<=summ<=11:
-            # Check whether the expected value is positive
-            size = float(sum([v for v in remainings.values()]))
-            expectedValue = 0
-            for i in range(1, 11):
-                if remainings[i]==0:
-                    continue
-                occurProb = remainings[i]/size
-                remainings[i] -= 1
-                if i==1 and summ+11<=21:
-                    expectedValue += occurProb*gameProb(summ+11, dealerFirstCard, remainings)
-                else:
-                    expectedValue += occurProb*gameProb(summ+i, dealerFirstCard, remainings)
-                remainings[i] += 1
-            if expectedValue>=0:
-                self.executeDoubleDown()
-                return True
-        return False
-
+            self.cardPlaying()
 
     def doubleDown(self):
         summ = sum(self.cards)
-        dealerFirstCard = self.dealer.getFirst()
-
-        if 9<= summ <=11:
+        if summ<9 or summ >11:
+            return False
+        if self.doubleStrategy=="none":
+            return False
+        elif self.doubleStrategy=="online":
+            dealerFirstCard = self.dealer.getFirst()
             if summ==11:
                 self.executeDoubleDown()
                 return True
@@ -163,8 +177,20 @@ class Player:
             if summ==9 and (2<=dealerFirstCard<=6):
                 self.executeDoubleDown()
                 return True
+        elif self.doubleStrategy=="calculate":
+            dealerFirstCard = self.dealer.getFirst()
+            remainings = self.dealer.getRemaining()
+            # Expected value of playing directly
+            origExpected = self.getExpectedValue()
+            if self.doubleDownExpected==None:
+                self.doubleDownExpected = expectedDoubleDown(summ, self.hasAce, dealerFirstCard, remainings)
+            # Check whether the expected value is positive
+            if self.doubleDownExpected*2>=origExpected:
+                self.executeDoubleDown()
+                return True
         else:
-            return False
+            raise Exception("No specified double Down strategy")
+        return False
     
     def executeDoubleDown(self):
         self.cards.append(self.dealer.givePlayerCard())
@@ -192,13 +218,15 @@ class Player:
 
     def calculateCardPlaying(self):
         points = sum(self.cards)
-        while toDraw(points, self.hasAce, self.dealer.getFirst(), self.dealer.getRemaining()):
+        self.allDraw += 1
+        while toDraw(points, self.hasAce, self.dealer.getFirst(), self.dealer.getRemaining(), 1, self.depthCounts):
             self.cards.append(self.dealer.givePlayerCard())
             if self.cards[-1]==1:
                 self.hasAce = 1
             points += self.cards[-1]
             if points>21:
                 break
+            self.allDraw += 1
         if points > 21:
             self.result = -1
         else:
@@ -206,13 +234,9 @@ class Player:
                 self.result =  points+10*self.hasAce
             else:
                 self.result =  points
-
-    def getDealer(self):
-        return self.dealer
             
-        
-
     def reset(self):
         self.cards = []
         self.hasAce = 0
         self.result = "Not initialize"
+        self.doubleDownExpected = None

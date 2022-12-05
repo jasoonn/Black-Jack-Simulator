@@ -3,9 +3,11 @@ from deck import Deck
 
 # Calculate the probabilites to win the dealer at the given points
 # return Type tuple (WinProb, loseProb, tieProb)
-def gameProb(points, dealerFirstCard, remainings):
+def gameProb(points, hasAce, dealerFirstCard, remainings):
     if points==-1:
         return -1
+    if points+10*hasAce<=21:
+        points = points+10*hasAce
     dealerDistribution = dealerDistributionWithFirst(dealerFirstCard, remainings)
     win = 0
     lose = 0
@@ -21,9 +23,8 @@ def gameProb(points, dealerFirstCard, remainings):
             else:
                 win += value
     return win-lose
-    #return (win, lose, tie)
-    
 
+# Get the expected value when the player has only one card(used in splitting pair)
 def oneCardExpected(card, hasAce, dealerFirstCard, remainings):
     size = float(sum([v for v in remainings.values()]))
     currentAce = hasAce
@@ -31,12 +32,10 @@ def oneCardExpected(card, hasAce, dealerFirstCard, remainings):
     for i in range(1, 11):
         if remainings[i]==0:
             continue
-
         occurProb = remainings[i]/size
         if (i==1 and card==10) or (i==10 and card==1):
             expectedValue += occurProb*1.5
             continue
-
         if i==1:
             hasAce = 1
         remainings[i]-=1
@@ -44,23 +43,33 @@ def oneCardExpected(card, hasAce, dealerFirstCard, remainings):
         if val>21:
             expectedValue -= occurProb
         else:
-            if val+10*hasAce<=21:
-                expectedValue += occurProb*gameProb(val+10*hasAce, dealerFirstCard, remainings)
-            else:
-                expectedValue += occurProb*gameProb(val, dealerFirstCard, remainings)
+            expectedValue += occurProb*gameProb(val, hasAce, dealerFirstCard, remainings)
         if i==1:
             hasAce = currentAce
         remainings[i]+=1
-
     return expectedValue
 
-# Find the expected value with at least two cards
+def expectedDoubleDown(points, hasAce, dealerFirstCard, remainings):
+    size = float(sum([v for v in remainings.values()]))
+    currentAce = hasAce
+    expectedValue = 0
+    for i in range(1, 11):
+        if remainings[i]==0:
+            continue
+        occurProb = remainings[i]/size
+        remainings[i] -= 1
+        if i==1:
+            hasAce = 1
+        expectedValue += occurProb*gameProb(points+i, hasAce, dealerFirstCard, remainings)
+        remainings[i] += 1
+        if i==1:
+            hasAce = currentAce
+    return expectedValue
+
+# Find the expected value with at least two cards 
 def expectedWin(points, hasAce, dealerFirstCard, remainings):
-    if toDraw(points, hasAce, dealerFirstCard, remainings)==False:
-        if points+10*hasAce<=21:
-            return gameProb(points+10*hasAce, dealerFirstCard, remainings)
-        else:
-            return gameProb(points, dealerFirstCard, remainings)
+    if toDraw(points, hasAce, dealerFirstCard, remainings, 0)==False:
+        return gameProb(points, hasAce, dealerFirstCard, remainings)
     else:
         size = float(sum([v for v in remainings.values()]))
         currentAce = hasAce
@@ -82,13 +91,7 @@ def expectedWin(points, hasAce, dealerFirstCard, remainings):
             remainings[i]+=1
         return expectedValue
 
-# First calculate the probability to win the game if not
-# Second iterate through all the possibilities
-def toDraw(points, hasAce, dealerFirstCard, remainings):
-    if points+10*hasAce<=21:
-        noDrawExpectedValue = gameProb(points+10*hasAce, dealerFirstCard, remainings)
-    else:
-        noDrawExpectedValue = gameProb(points, dealerFirstCard, remainings)
+def calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, depth=0):
     size = float(sum([v for v in remainings.values()]))
     drawExpectedValue = 0
     currentAce = hasAce
@@ -98,21 +101,36 @@ def toDraw(points, hasAce, dealerFirstCard, remainings):
         if i==1:
             hasAce = 1
         occurProb = remainings[i]/size
-        remainings[i]-=1
         val = points + i
+        remainings[i]-=1
         if val>21:
             drawExpectedValue -= occurProb
         else:
-            if hasAce==1 and val+10*hasAce<=21:
-                drawExpectedValue += occurProb*gameProb(val+10*hasAce, dealerFirstCard, remainings)
-            else:
-                drawExpectedValue += occurProb*gameProb(val, dealerFirstCard, remainings)
+            expected = gameProb(val, hasAce, dealerFirstCard, remainings)
+            if depth>0:
+                expected = max(expected, calculateExpectedWithDepth(val, hasAce, dealerFirstCard, remainings, depth-1))
+            drawExpectedValue += occurProb*(expected)
+        remainings[i]+=1
         if i==1:
             hasAce = currentAce
-        remainings[i]+=1
+        
+    return drawExpectedValue
+
+# First calculate the probability to win the game if not
+# Second iterate through all the possibilities
+def toDraw(points, hasAce, dealerFirstCard, remainings, depth=0, logging=[]):
+    noDrawExpectedValue = gameProb(points, hasAce, dealerFirstCard, remainings)
+    drawExpectedValue = calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, depth)
     if drawExpectedValue >= noDrawExpectedValue:
         return True
     else:
+        for idx in range(1, len(logging)):
+            if calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, depth=depth+idx)>noDrawExpectedValue:
+                for i in range(idx, len(logging)):
+                    logging[i] += 1
+                break
+        if len(logging)>0:
+            logging[0] += 1
         return False
 
 
@@ -147,9 +165,6 @@ def dealerDistributionWithFirst(first, remainings):
         return answer
     else:
         return getDealerPointsDistribution(first, 0, remainings, baseSize)
-
-    
-
     
 # Get the dealer distribution given that the dealer has "points" points
 # The function has been verified
@@ -197,4 +212,3 @@ if __name__=="__main__":
         deck.drawSpecificCard(cardDraw)
         answer = dealerDistributionWithFirst(cardDraw, deck.getRemainings())
         print(cardDraw, "Return", answer, sum([i for i in answer.values()]))
-    # print(gameProb(17, cardDraw, deck.getRemainings()))

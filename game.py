@@ -3,15 +3,14 @@ from collections import defaultdict
 from dealer import Dealer
 from player import Player
 from deck import Deck
-import copy
 
 class Game:
-    def __init__(self, numPlayers):
+    def __init__(self, numPlayers, splitStrategy, doubleStrategy, drawingStrategy):
         self.deck = Deck()
         self.dealer = Dealer(self.deck)
-        self.players = [Player(i, self.dealer) for i in range(numPlayers)]
+        self.players = [Player(i, self.dealer, splitStrategy, doubleStrategy, drawingStrategy) for i in range(numPlayers)]
         
-    def startGame(self, numRound):
+    def startGame(self, numRound, shuffleEach=False):
         round = 0
         spent = [0 for _ in self.players]
         earned = [0 for _ in self.players]
@@ -21,8 +20,9 @@ class Game:
         doubleEarn = [0 for _ in self.players]
         doubleSpent = [0 for _ in self.players]
         while round<numRound:
-            if round%100==0:
+            if round%10==0:
                 print("round", round)
+                self.players[0].printDrawStats()
             if round%1000==0:
                 print(round, counts)
             thisRoundBet = []
@@ -54,18 +54,15 @@ class Game:
                 for idx, player in enumerate(self.players):
                     if player.isBlackJack():
                         continue
-                    # Check whether they want doubling down
                     # Check whether they want to split pairs
                     if player.splittingPairs():
                         isSplitting[idx] = True
-                    elif player.memoryDoubleDown():
-                    #elif player.doubleDown():
+                    # Check whether they want doubling down
+                    elif player.doubleDown():
                         thisRoundBet[idx] *= 2
                         doubleSpent[idx] += thisRoundBet[idx]
                     else:
-                        #player.naivePlaying(11)
-                        #player.calculateCardPlaying()
-                        player.onlineStrategy()
+                        player.cardPlaying()
                 dealerPoint = self.dealer.takeCards()
                 #Check the result
                 for idx, player in enumerate(self.players):
@@ -111,69 +108,19 @@ class Game:
                 #player.printCards()
                 player.reset()
             self.dealer.reset()
-            if sum(self.deck.getRemainings().values())<70:
-                print("reshuffle")
+            if shuffleEach or sum(self.deck.getRemainings().values())<70:
                 self.deck.reInit()
             round += 1
-        print(counts)
-        #Verify
+        # Output simulation statistics
         for idx, count in enumerate(counts):
             assert sum(count.values())==numRound+splittingSpend[idx]/2
+            print("Overall result:", count)
             print("Spent:", spent[idx], " Earn: ", earned[idx], " Adjust earn ", earned[idx]/spent[idx]*numRound)
             print("Double spent:", doubleSpent[idx], "Double earned", doubleEarn[idx])
             print("Splitting spent:", splittingSpend[idx], "Splitting earned", splittingEarn[idx])
 
-
-def fixSimulation(simulationTimes):
-    deck = Deck()
-    dealer = Dealer(deck)
-    player = Player(0, dealer)
-    dealer.recieveCard()
-    player.recievedCard(player.getDealer().givePlayerCard())
-    player.recievedCard(player.getDealer().givePlayerCard())
-    dealer.printCards()
-    player.printCards()
-    orig = copy.deepcopy(player)
-    print("Expected value", player.getExpectedValue())
-    total = 0
-    iteration = 10
-    outer = 0
-    while outer<iteration:
-        outer += 1
-        win = 0
-        tie = 0
-        loss = 0
-        count = 0
-        while count<simulationTimes:
-            # if count%10000==0:
-            #     print(count)
-            player.getDealer().recieveCard()
-            #Skip if meet dealer black jack
-            if player.getDealer().isBlackJack():
-                player = copy.deepcopy(orig)
-                continue
-            count += 1
-            player.calculateCardPlaying()
-            result = player.checkWin(player.getDealer().takeCards())
-            #player.getDealer().printCards()
-            #player.printCards()
-            #print(result)
-            if result=='W':
-                win += 1
-            elif result=='T':
-                tie += 1
-            else:
-                loss += 1
-
-            player = copy.deepcopy(orig)
-        print(win, loss , tie)
-        total += (win-loss)
-        print("Simulate expected:", (win-loss)/float(simulationTimes))
-    print("ALL: ", total/float(simulationTimes*iteration))
-    
-    
-
 if __name__=="__main__":
-    # game = Game(1)
-    # game.startGame(10000)
-    fixSimulation(50000)
+    game = Game(1, "none", "none", "calculate")
+    game.startGame(100000)
+    #game.startGame(10000, True)
+    #checkExpected(50000)
