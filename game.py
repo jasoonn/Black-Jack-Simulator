@@ -20,9 +20,6 @@ class Game:
         doubleEarn = [0 for _ in self.players]
         doubleSpent = [0 for _ in self.players]
         while round<numRound:
-            if round%10==0:
-                print("round", round)
-                self.players[0].printDrawStats()
             if round%1000==0:
                 print(round, counts)
             thisRoundBet = []
