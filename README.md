@@ -21,10 +21,13 @@ Online strategy [reference](https://bicyclecards.com/how-to-play/blackjack/).
 * Calculate: Calculate the expected value of playing normaly and the expected value of double down. If the expected value of splitting pair is the largest. Then, we choose to double down.
 
 ### Drawing Strategy
-* Naive: 
-* Online: 
-* Calculate:
+* Naive: Continue to take cards until the total is 17.
+* Online: When the dealer's upcard is a good one, a 7, 8, 9, 10-card, or ace, keep drawing until a total of 17 or more is reached. When the dealer's upcard is a poor one, 4, 5, or 6, stop drawing as soon as a total of 12 or higher. Finally, when the dealer's up card is a fair one, 2 or 3, the player should stop with a total of 13 or higher.
+* Calculate: Our algorithm will first calculate the expected gain of not drawing the card. Then, it calculates the expected gain of drawing one card under consideration of a given depth. If the non-drawing expected gain is greater than the drawing expected one, we will decide not to draw the card. If the drawing expected gain is greater than the non-drawing expected one, we will decide to draw the card. 
 
 ### How depth the algorithm should go
+If the depth is large, it takes more time to calculate value. 
+If the depth is small, the accuracy of the expected value is decreased, which might harm the algorithm.
+To strike a balance between these two, we simulate .
 100000, [53951, 797, 825, 827, 827]
 If we go with depth=0, we will miss about 797
