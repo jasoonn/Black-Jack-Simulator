@@ -68,7 +68,7 @@ def expectedDoubleDown(points, hasAce, dealerFirstCard, remainings):
 
 # Find the expected value with at least two cards 
 def expectedWin(points, hasAce, dealerFirstCard, remainings):
-    if toDraw(points, hasAce, dealerFirstCard, remainings, 0)==False:
+    if toDraw(points, hasAce, dealerFirstCard, remainings, 1)==False:
         return gameProb(points, hasAce, dealerFirstCard, remainings)
     else:
         size = float(sum([v for v in remainings.values()]))
@@ -91,7 +91,7 @@ def expectedWin(points, hasAce, dealerFirstCard, remainings):
             remainings[i]+=1
         return expectedValue
 
-def calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, depth=0):
+def calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, depth=1):
     size = float(sum([v for v in remainings.values()]))
     drawExpectedValue = 0
     currentAce = hasAce
@@ -107,7 +107,7 @@ def calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, dept
             drawExpectedValue -= occurProb
         else:
             expected = gameProb(val, hasAce, dealerFirstCard, remainings)
-            if depth>0:
+            if depth>1:
                 expected = max(expected, calculateExpectedWithDepth(val, hasAce, dealerFirstCard, remainings, depth-1))
             drawExpectedValue += occurProb*(expected)
         remainings[i]+=1
@@ -118,7 +118,7 @@ def calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, dept
 
 # First calculate the probability to win the game if not
 # Second iterate through all the possibilities
-def toDraw(points, hasAce, dealerFirstCard, remainings, depth=0, logging=[]):
+def toDraw(points, hasAce, dealerFirstCard, remainings, depth=1, logging=[]):
     noDrawExpectedValue = gameProb(points, hasAce, dealerFirstCard, remainings)
     drawExpectedValue = calculateExpectedWithDepth(points, hasAce, dealerFirstCard, remainings, depth)
     if drawExpectedValue >= noDrawExpectedValue:

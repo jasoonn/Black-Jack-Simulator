@@ -219,7 +219,7 @@ class Player:
     def calculateCardPlaying(self):
         points = sum(self.cards)
         self.allDraw += 1
-        while toDraw(points, self.hasAce, self.dealer.getFirst(), self.dealer.getRemaining(), 1, self.depthCounts):
+        while toDraw(points, self.hasAce, self.dealer.getFirst(), self.dealer.getRemaining(), 2, self.depthCounts):
             self.cards.append(self.dealer.givePlayerCard())
             if self.cards[-1]==1:
                 self.hasAce = 1
