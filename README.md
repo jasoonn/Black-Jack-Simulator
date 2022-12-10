@@ -25,9 +25,18 @@ Online strategy [reference](https://bicyclecards.com/how-to-play/blackjack/).
 * Online: When the dealer's upcard is a good one, a 7, 8, 9, 10-card, or ace, keep drawing until a total of 17 or more is reached. When the dealer's upcard is a poor one, 4, 5, or 6, stop drawing as soon as a total of 12 or higher. Finally, when the dealer's up card is a fair one, 2 or 3, the player should stop with a total of 13 or higher.
 * Calculate: Our algorithm will first calculate the expected gain of not drawing the card. Then, it calculates the expected gain of drawing one card under consideration of a given depth. If the non-drawing expected gain is greater than the drawing expected one, we will decide not to draw the card. If the drawing expected gain is greater than the non-drawing expected one, we will decide to draw the card. 
 
-### How depth the algorithm should go
+### How depth the calculate drawing algorithm should go
 If the depth is large, it takes more time to calculate value. 
 If the depth is small, the accuracy of the expected value is decreased, which might harm the algorithm.
-To strike a balance between these two, we simulate .
-100000, [53951, 797, 825, 827, 827]
-If we go with depth=0, we will miss about 797
+To strike a balance between these two, we simulated the expected value in different depth for 100000 round and calculated the number of times that the decision of considering deeper will perform different from our drawing algorithm with depth 1(i.e When our drawing algorithm with depth 1 choose not to draw, the more accurate expected gain is larger than the non-drawing expected gain).
+The statistics are shown below.
+| Depth | Count |
+|-------|-------|
+| 2     | 797   |
+| 3     | 825   |
+| 4     | 827   |
+| 5     | 827   |
+
+
+Based on the statistics, if we choose the depth to be 2, there will be only roughly 0.008% to get a wrong dicision.
+Hence, in the simulation, we set the depth of our calculation to be 2.
