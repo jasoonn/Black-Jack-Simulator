@@ -7,7 +7,7 @@ if __name__=="__main__":
     parser.add_argument('--split', type=str, default="none")
     parser.add_argument('--double', type=str, default="none")
     parser.add_argument('--draw', type=str, default="naive")
-    parser.add_argument('--round', type=int, default=10000)
+    parser.add_argument('--round', type=int, default=1000)
     args = parser.parse_args()
     
     splitStrategy = ["none", "online", "calculate"]

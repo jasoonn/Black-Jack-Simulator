@@ -20,7 +20,7 @@ class Game:
         doubleEarn = [0 for _ in self.players]
         doubleSpent = [0 for _ in self.players]
         while round<numRound:
-            if round%1000==0:
+            if round%100==0:
                 print(round, counts)
             thisRoundBet = []
             result = []
